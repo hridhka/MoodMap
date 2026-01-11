@@ -72,3 +72,5 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 =======
 # MoodMap
 >>>>>>> 93e2947f79e5a34332287ce9438c4b7ed86d83d4
+>>>>>>>
+>>>>>>> https://mood-otwtxaz30-hridhikas-projects-12999dba.vercel.app
