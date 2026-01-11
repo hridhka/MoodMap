@@ -1,22 +1,24 @@
-export async function fetchPlaces(mood) {
-  const moodMap = {
-    work: [
-      { name: "Cafe Workspace", rating: 4.6, open: true },
-      { name: "Quiet Coffee", rating: 4.4, open: false },
-    ],
-    date: [
-      { name: "Romantic Bistro", rating: 4.7, open: true },
-      { name: "Candlelight Dine", rating: 4.5, open: true },
-    ],
-    quick: [
-      { name: "Burger Hub", rating: 4.2, open: true },
-      { name: "Quick Bites", rating: 4.1, open: false },
-    ],
-    budget: [
-      { name: "Street Food Point", rating: 4.3, open: true },
-      { name: "Budget Meals", rating: 4.0, open: true },
-    ],
-  };
+// src/services/placesService.js
 
-  return moodMap[mood] || [];
-}
+const API_KEY = 'fsq3C4bJnLuIW2M/p2X962HN4yWHiBn1yh4LHV/I1fYyBo8='; 
+
+export const fetchPlaces = async (lat, lng, query) => {
+  try {
+    // Foursquare API endpoint
+    const response = await fetch(
+      `https://api.foursquare.com/v3/places/search?ll=${lat},${lng}&query=${query}&limit=10`,
+      {
+        headers: {
+          Accept: 'application/json',
+          Authorization: API_KEY,
+        },
+      }
+    );
+
+    const data = await response.json();
+    return data.results; // This returns an array of places
+  } catch (error) {
+    console.error("Error fetching places:", error);
+    return [];
+  }
+};
