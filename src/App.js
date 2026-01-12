@@ -1,18 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import React, { useState, useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 
-/* =========================
-   FIX LEAFLET ICON
-========================= */
+/* FIX LEAFLET ICON */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -25,209 +17,150 @@ L.Icon.Default.mergeOptions({
 
 const SEARCH_RADIUS = 5000;
 
-/* =========================
-   DISTANCE FUNCTION
-========================= */
+/* DISTANCE */
 function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
-
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-/* =========================
-   MAP CONTROLLER
-========================= */
 function ChangeMapView({ center }) {
   const map = useMap();
   map.setView(center, 14);
   return null;
 }
 
-function App() {
+export default function App() {
   const [places, setPlaces] = useState([]);
-  const [loading, setLoading] = useState(false);
-
   const [center, setCenter] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-
-  const [cityQuery, setCityQuery] = useState("");
-
-  const [mood, setMood] = useState("all");
-  const [hoverMood, setHoverMood] = useState(null);
-
+  const [userCity, setUserCity] = useState("Detecting location...");
+  const [mood, setMood] = useState("Work Mode");
   const [sortNear, setSortNear] = useState(true);
   const [sortPopular, setSortPopular] = useState(false);
-
   const [searchText, setSearchText] = useState("");
   const [activePlace, setActivePlace] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const markerRefs = useRef({});
+  /* GET USER LOCATION */
+  const getUserLocation = () => {
+    setUserCity("Detecting location...");
 
-  /* =========================
-     GET USER LOCATION
-  ========================= */
-  useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
-      (pos) => {
-        const loc = [
-          pos.coords.latitude,
-          pos.coords.longitude,
-        ];
+      async (pos) => {
+        const loc = [pos.coords.latitude, pos.coords.longitude];
         setUserLocation(loc);
         setCenter(loc);
+
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc[0]}&lon=${loc[1]}&accept-language=en`
+        );
+        const data = await res.json();
+
+        const city =
+          data.address?.city ||
+          data.address?.town ||
+          data.address?.village ||
+          data.address?.state ||
+          "Your location";
+
+        setUserCity(city);
       },
-      () => {
-        console.log("Location denied – manual city enabled");
-      }
+      () => setUserCity("Location access denied")
     );
+  };
+
+  useEffect(() => {
+    getUserLocation();
   }, []);
 
-  /* =========================
-     FETCH PLACES (REAL DATA)
-  ========================= */
+  /* FETCH PLACES */
   const fetchPlaces = async (lat, lon) => {
     setLoading(true);
 
     const query = `
       [out:json];
       (
-        node["amenity"="cafe"](around:${SEARCH_RADIUS}, ${lat}, ${lon});
-        node["amenity"="fast_food"](around:${SEARCH_RADIUS}, ${lat}, ${lon});
+        node["amenity"="cafe"](around:${SEARCH_RADIUS},${lat},${lon});
+        node["amenity"="fast_food"](around:${SEARCH_RADIUS},${lat},${lon});
       );
       out;
     `;
 
-    const res = await fetch(
-      "https://overpass-api.de/api/interpreter",
-      { method: "POST", body: query }
-    );
-
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      body: query,
+    });
     const data = await res.json();
 
     setPlaces(
-      data.elements.map((el) => ({
-        id: el.id,
-        name: el.tags?.name || "Unnamed Place",
-        type: el.tags?.amenity,
-        pos: [el.lat, el.lon],
-      }))
+      data.elements
+        .filter((el) => el.tags?.name)
+        .map((el) => ({
+          id: el.id,
+          name: el.tags.name,
+          type: el.tags.amenity,
+          pos: [el.lat, el.lon],
+          rating: (Math.random() * (5 - 4.2) + 4.2).toFixed(1),
+          reviews: Math.floor(Math.random() * 300) + 50,
+          price: el.tags.amenity === "fast_food" ? "$$" : "$$$$",
+          tags:
+            el.tags.amenity === "fast_food"
+              ? ["Fast", "Takeout"]
+              : ["Coffee", "Fresh"],
+          open: true,
+        }))
     );
 
     setLoading(false);
   };
 
-  /* =========================
-     FETCH WHEN CENTER CHANGES
-  ========================= */
   useEffect(() => {
-    if (center) {
-      fetchPlaces(center[0], center[1]);
-    }
+    if (center) fetchPlaces(center[0], center[1]);
   }, [center]);
 
-  /* =========================
-     CITY SEARCH (MANUAL)
-  ========================= */
-  const searchCity = async () => {
-    if (!cityQuery) return;
-
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${cityQuery}`
-    );
-    const data = await res.json();
-
-    if (data.length > 0) {
-      const loc = [
-        parseFloat(data[0].lat),
-        parseFloat(data[0].lon),
-      ];
-      setCenter(loc);
-      setUserLocation(loc);
-      setActivePlace(null);
-    }
-  };
-
-  /* =========================
-     FILTER BY MOOD
-  ========================= */
-  let processed = places.filter((p) => {
-    if (mood === "all") return true;
-    if (mood === "work" || mood === "date") return p.type === "cafe";
-    if (mood === "budget") return p.type === "fast_food";
-    return true;
-  });
-
-  /* =========================
-     ADD DISTANCE
-  ========================= */
-  processed = processed.map((p) => {
-    if (!userLocation) return p;
-    return {
+  /* FILTER */
+  const filtered = places
+    .filter((p) =>
+      p.name.toLowerCase().includes(searchText.toLowerCase())
+    )
+    .filter((p) => {
+      if (mood === "Work Mode" || mood === "Date Night") return p.type === "cafe";
+      if (mood === "Quick Bite" || mood === "Budget") return p.type === "fast_food";
+      return true;
+    })
+    .map((p) => ({
       ...p,
-      distance: getDistanceKm(
-        userLocation[0],
-        userLocation[1],
-        p.pos[0],
-        p.pos[1]
-      ),
-    };
-  });
+      distance: userLocation
+        ? getDistanceKm(
+            userLocation[0],
+            userLocation[1],
+            p.pos[0],
+            p.pos[1]
+          )
+        : null,
+    }))
+    .sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+      if (sortNear) {
+        scoreA += a.distance ?? 999;
+        scoreB += b.distance ?? 999;
+      }
+      if (sortPopular) {
+        scoreA -= a.reviews;
+        scoreB -= b.reviews;
+      }
+      return scoreA - scoreB;
+    });
 
-  /* =========================
-     SEARCH TEXT
-  ========================= */
-  processed = processed.filter((p) =>
-    p.name.toLowerCase().includes(searchText.toLowerCase())
-  );
-
-  /* =========================
-     COMBINED SORT
-  ========================= */
-  processed.sort((a, b) => {
-    let scoreA = 0;
-    let scoreB = 0;
-
-    if (sortNear) {
-      scoreA += a.distance ?? 999;
-      scoreB += b.distance ?? 999;
-    }
-
-    if (sortPopular) {
-      if (a.name !== "Unnamed Place") scoreA -= 5;
-      if (b.name !== "Unnamed Place") scoreB -= 5;
-      if (a.type === "cafe") scoreA -= 2;
-      if (b.type === "cafe") scoreB -= 2;
-    }
-
-    return scoreA - scoreB;
-  });
-
-  const markersToShow = activePlace ? [activePlace] : processed;
-
-  /* =========================
-     MAP SYNC
-  ========================= */
-  useEffect(() => {
-    if (activePlace) {
-      setCenter(activePlace.pos);
-      markerRefs.current[activePlace.id]?.openPopup();
-    }
-  }, [activePlace]);
-
-  /* =========================
-     BODY BACKGROUND
-  ========================= */
-  useEffect(() => {
-    document.body.className = `mood-${hoverMood || mood}`;
-  }, [mood, hoverMood]);
+  const markers = activePlace ? [activePlace] : filtered;
 
   return (
     <div className="app">
@@ -235,69 +168,86 @@ function App() {
         <h1>MOOD MAP</h1>
 
         <input
-          placeholder="Search cafes..."
+          placeholder="Search places, cuisines, vibes..."
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
 
-        <div className="city-search">
-          <input
-            placeholder="Enter city or state"
-            value={cityQuery}
-            onChange={(e) => setCityQuery(e.target.value)}
-          />
-          <button onClick={searchCity}>Search</button>
-        </div>
+        <button className="location-btn" onClick={getUserLocation}>
+          ➤ {userCity}
+        </button>
       </header>
 
-      <section className="mood-section">
-        <div className="mood-cards">
-          {["All","Work","Date","Quick","Budget"].map((v, i) => (
-            <MoodCard
-              key={v}
-              label={v}
-              emoji={["✨","💼","❤️","⚡","💰"][i]}
-              value={v}
-              {...{ mood, setMood, setHoverMood }}
-            />
-          ))}
-        </div>
-      </section>
+      <div className="mood-intro">
+        <h2>What's your mood?</h2>
+        <p>Choose how you're feeling and we'll find the perfect spot</p>
+      </div>
+
+      <div className="mood-cards">
+        {["Work Mode", "Date Night", "Quick Bite", "Budget"].map((m, i) => (
+          <div
+            key={m}
+            className={`mood-card ${mood === m ? "active" : ""}`}
+            onClick={() => setMood(m)}
+          >
+            <div className="icon">{["⌘", "♥", "✦", "₹"][i]}</div>
+            <h4>{m}</h4>
+          </div>
+        ))}
+      </div>
 
       <main className="content">
         <div className="list">
-          <div className="sort-bar">
-            <button
-              className={sortNear ? "active" : ""}
-              onClick={() => setSortNear(!sortNear)}
-            >
-              📍 Nearest
-            </button>
-            <button
-              className={sortPopular ? "active" : ""}
-              onClick={() => setSortPopular(!sortPopular)}
-            >
-              ⭐ Popular
-            </button>
+          <div className="results-header">
+            <div className="results-left">
+              <span>{filtered.length} spots found</span>
+              <button className="open-now">
+                <span className="dot" /> Open Now
+              </button>
+            </div>
+
+            <div className="results-right">
+              <button
+                className={`pill ${sortNear ? "active" : ""}`}
+                onClick={() => setSortNear(!sortNear)}
+              >
+                Nearest
+              </button>
+              <button
+                className={`pill ${sortPopular ? "active" : ""}`}
+                onClick={() => setSortPopular(!sortPopular)}
+              >
+                Popular
+              </button>
+            </div>
           </div>
 
           {loading && <p>Loading places…</p>}
 
           {!loading &&
-            processed.map((p) => (
+            filtered.map((p) => (
               <div
                 key={p.id}
-                className={`place-card ${
-                  activePlace?.id === p.id ? "active" : ""
-                }`}
+                className="place-card"
                 onClick={() => setActivePlace(p)}
               >
-                <h3>{p.name}</h3>
-                {p.distance && (
-                  <p className="distance">
-                    {p.distance.toFixed(2)} km away
+                <div className="place-info">
+                  <div className="place-head">
+                    <h3>{p.name}</h3>
+                    <span className="rating">
+                      ★ {p.rating} ({p.reviews})
+                    </span>
+                  </div>
+                  <p className="meta">
+                    {p.distance?.toFixed(2)} km · Open · {p.price}
                   </p>
-                )}
+                  <div className="tags">
+                    {p.tags.map((t) => (
+                      <span key={t}>{t}</span>
+                    ))}
+                  </div>
+                  <div className="footer">Directions →</div>
+                </div>
               </div>
             ))}
         </div>
@@ -306,46 +256,14 @@ function App() {
           <MapContainer center={center} zoom={14} className="map">
             <ChangeMapView center={center} />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-            {markersToShow.map((p) => (
-              <Marker
-                key={p.id}
-                position={p.pos}
-                ref={(r) => (markerRefs.current[p.id] = r)}
-              >
-                <Popup>
-                  <strong>{p.name}</strong>
-                </Popup>
+            {markers.map((p) => (
+              <Marker key={p.id} position={p.pos}>
+                <Popup>{p.name}</Popup>
               </Marker>
             ))}
-
-            {userLocation && (
-              <Marker position={userLocation}>
-                <Popup>You are here</Popup>
-              </Marker>
-            )}
           </MapContainer>
         )}
       </main>
     </div>
   );
 }
-
-/* =========================
-   MOOD CARD
-========================= */
-function MoodCard({ label, emoji, value, mood, setMood, setHoverMood }) {
-  return (
-    <div
-      className={`mood-card ${mood === value ? "active" : ""}`}
-      onClick={() => setMood(value)}
-      onMouseEnter={() => setHoverMood(value)}
-      onMouseLeave={() => setHoverMood(null)}
-    >
-      <div className="icon">{emoji}</div>
-      <h4>{label}</h4>
-    </div>
-  );
-}
-
-export default App;
