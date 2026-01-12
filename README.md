@@ -58,9 +58,9 @@ Version Control: Git & GitHub
 (replace with your final domain if needed)
 
 ### How to Run Locally
-git clone https://github.com/hridhka/MoodMap.git
-cd MoodMap
-npm install
+git clone https://github.com/hridhka/MoodMap.git     
+cd MoodMap   
+npm install   
 npm start
 
 ### Why this project matters
