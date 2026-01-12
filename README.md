@@ -1,12 +1,12 @@
-MoodMap 🗺️
+# MoodMap 🗺️
 
 Smart Nearby Places Recommender
 
-What is this project?
+### What is this project?
 
 MoodMap is a location-based web app that helps users discover nearby cafés and fast-food spots based on their current mood (Work Mode, Date Night, Quick Bite, Budget).
 
-What problem does it solve?
+### What problem does it solve?
 
 People waste time deciding where to go.
 MoodMap removes decision fatigue by:
@@ -19,7 +19,7 @@ Filtering recommendations by mood and distance
 
 No manual searching. No guesswork.
 
-Tech Stack
+## Tech Stack
 
 Frontend: React (Create React App)
 
@@ -39,7 +39,7 @@ Deployment: Vercel
 
 Version Control: Git & GitHub
 
-Features
+## Features
 
 📍 Real-time user location detection
 
@@ -51,19 +51,19 @@ Features
 
 📱 Responsive design (mobile + desktop)
 
-Live Demo
+### Live Demo
 
 👉 Live Site: https://mood-map-red.vercel.app
 
 (replace with your final domain if needed)
 
-How to Run Locally
+### How to Run Locally
 git clone https://github.com/hridhka/MoodMap.git
 cd MoodMap
 npm install
 npm start
 
-Why this project matters
+### Why this project matters
 
 This project demonstrates:
 
