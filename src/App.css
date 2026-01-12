@@ -377,3 +377,15 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}

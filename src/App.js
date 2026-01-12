@@ -22,14 +22,17 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
+
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+/* MAP CONTROLLER */
 function ChangeMapView({ center }) {
   const map = useMap();
   map.setView(center, 14);
@@ -48,7 +51,7 @@ export default function App() {
   const [activePlace, setActivePlace] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  /* GET USER LOCATION */
+  /* GET USER LOCATION + CITY */
   const getUserLocation = () => {
     setUserCity("Detecting location...");
 
@@ -97,6 +100,7 @@ export default function App() {
       method: "POST",
       body: query,
     });
+
     const data = await res.json();
 
     setPlaces(
@@ -114,7 +118,6 @@ export default function App() {
             el.tags.amenity === "fast_food"
               ? ["Fast", "Takeout"]
               : ["Coffee", "Fresh"],
-          open: true,
         }))
     );
 
@@ -126,13 +129,14 @@ export default function App() {
   }, [center]);
 
   /* FILTER */
-  const filtered = places
+  let filtered = places
     .filter((p) =>
       p.name.toLowerCase().includes(searchText.toLowerCase())
     )
     .filter((p) => {
       if (mood === "Work Mode" || mood === "Date Night") return p.type === "cafe";
-      if (mood === "Quick Bite" || mood === "Budget") return p.type === "fast_food";
+      if (mood === "Quick Bite" || mood === "Budget")
+        return p.type === "fast_food";
       return true;
     })
     .map((p) => ({
@@ -149,14 +153,17 @@ export default function App() {
     .sort((a, b) => {
       let scoreA = 0;
       let scoreB = 0;
+
       if (sortNear) {
         scoreA += a.distance ?? 999;
         scoreB += b.distance ?? 999;
       }
+
       if (sortPopular) {
         scoreA -= a.reviews;
         scoreB -= b.reviews;
       }
+
       return scoreA - scoreB;
     });
 
@@ -164,36 +171,45 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>MOOD MAP</h1>
+      {/* HEADER */}
+<header className="header">
+  <div className="brand">
+    <img src="/logo.png" alt="Mood Map Logo" className="logo" />
+    <h1>MOOD MAP</h1>
+  </div>
 
-        <input
-          placeholder="Search places, cuisines, vibes..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
+  <input
+    placeholder="Search places, cuisines, vibes..."
+    value={searchText}
+    onChange={(e) => setSearchText(e.target.value)}
+  />
 
-        <button className="location-btn" onClick={getUserLocation}>
-          ➤ {userCity}
-        </button>
-      </header>
+  <button className="location-btn" onClick={getUserLocation}>
+    ➤ {userCity}
+  </button>
+</header>
 
+
+      {/* MOOD INTRO */}
       <div className="mood-intro">
         <h2>What's your mood?</h2>
         <p>Choose how you're feeling and we'll find the perfect spot</p>
       </div>
 
+      {/* MOODS */}
       <div className="mood-cards">
-        {["Work Mode", "Date Night", "Quick Bite", "Budget"].map((m, i) => (
-          <div
-            key={m}
-            className={`mood-card ${mood === m ? "active" : ""}`}
-            onClick={() => setMood(m)}
-          >
-            <div className="icon">{["⌘", "♥", "✦", "₹"][i]}</div>
-            <h4>{m}</h4>
-          </div>
-        ))}
+        {["Work Mode", "Date Night", "Quick Bite", "Budget"].map(
+          (m, i) => (
+            <div
+              key={m}
+              className={`mood-card ${mood === m ? "active" : ""}`}
+              onClick={() => setMood(m)}
+            >
+              <div className="icon">{["⌘", "♥", "✦", "₹"][i]}</div>
+              <h4>{m}</h4>
+            </div>
+          )
+        )}
       </div>
 
       <main className="content">
@@ -229,7 +245,10 @@ export default function App() {
               <div
                 key={p.id}
                 className="place-card"
-                onClick={() => setActivePlace(p)}
+                onClick={() => {
+                  setActivePlace(p);
+                  setCenter(p.pos); // 🔥 THIS IS THE FIX
+                }}
               >
                 <div className="place-info">
                   <div className="place-head">
