@@ -53,7 +53,7 @@ Version Control: Git & GitHub
 
 ### Live Demo
 
-👉 Live Site: https://mood-map-red.vercel.app
+👉 Live Site: [https://mood-map-red.vercel.app](https://mood-map-explore.vercel.app/)
 
 (replace with your final domain if needed)
 
