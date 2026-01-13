@@ -74,3 +74,14 @@ Location-based features
 Clean UI/UX thinking
 
 Production deployment workflow
+
+## Skills Relevant to AI & Content Systems
+
+This project demonstrates skills that overlap with AI-driven content and recommendation systems:
+
+- Interpreting subjective user inputs (mood) and mapping them to structured system decisions
+- Handling ambiguity and user intent, similar to challenges in LLM-generated content
+- Designing logic with a focus on clarity, consistency, and usefulness of outputs
+- Evaluating system responses based on user experience rather than raw correctness
+
+Building MoodMap strengthened my interest in how intelligent systems interpret human context and how their outputs can be improved for clarity and decision-making.
